@@ -8,7 +8,8 @@ import os
 import datetime
 from bson import ObjectId
 from pydantic import BaseModel
-import uuid
+from fastapi.middleware.cors import CORSMiddleware
+
 
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
@@ -24,6 +25,14 @@ history_collection = db[HISTORY_COLLECTION_NAME]
 
 # FastAPI instance
 app = FastAPI(title="Excel Structure Parser API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (use specific domains in production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/uploadExcel")
 async def upload_excel(file: UploadFile = File(...)):
@@ -60,18 +69,33 @@ async def upload_excel(file: UploadFile = File(...)):
                 SID_Number = "SID1"
 
                 for j in range(len(field_name_col)):
+                    print(j)
                     if isinstance(field_name_col[j], str) and "SID" in field_name_col[j]:
                         SID_Number = field_name_col[j].split(":")[0]
                         if not is_first_SID:
+                            print(SID)
+                            print("--------")
                             structure.append(SID)
                             SID = {}
                         is_first_SID = False
 
                     if variable_name_col[j] != "نام متغیر" and not pd.isna(variable_name_col[j]):
-                        SID["sub_system"] = sheet_name
-                        SID["SID"] = SID_Number
+                        metadata = {}
+                        metadata["sub_system"] = sheet_name
+                        metadata["SID"] = SID_Number
+
+                        SID["metadata"] = metadata
                         variable_name = variable_name_col[j]
-                        SID[variable_name] = "uint16_t" if pd.isna(variable_format_col[j]) else variable_format_col[j]
+                        # SID[variable_name] = "uint16_t" if pd.isna(variable_format_col[j]) else variable_format_col[j]
+                        if pd.isna(variable_format_col[j]) and not pd.isna(number_of_bytes_col[j]):
+                            # print((number_of_bytes_col[j]))
+                            for k in range(1, int(number_of_bytes_col[j]) + 1):
+                                print(f"{variable_name}-{k}")
+                                SID[f"{variable_name}-{k}"] = "uint8_t"
+                        # elif pd.isna(variable_format_col[j]) and pd.isna(number_of_bytes_col[j]):
+                        #     SID[variable_name] = "uint8_t"
+                        else:
+                            SID[variable_name] = variable_format_col[j]
 
                 structure.append(SID)
 
@@ -110,6 +134,7 @@ async def get_current_structure():
     dataCollection = db[metadata[0]["collection_name"]]
     data = list(dataCollection.find({}))
     jsonable_data = bson_to_jsonable(data)
+    print(jsonable_data)
     return JSONResponse(content=jsonable_data)
 
 @app.get("/getAllStructureMetadata")

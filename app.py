@@ -86,16 +86,16 @@ async def upload_excel(file: UploadFile = File(...)):
 
                         SID["metadata"] = metadata
                         variable_name = variable_name_col[j]
+                        SID[variable_name] = variable_format_col[j]
                         # SID[variable_name] = "uint16_t" if pd.isna(variable_format_col[j]) else variable_format_col[j]
-                        if pd.isna(variable_format_col[j]) and not pd.isna(number_of_bytes_col[j]):
-                            # print((number_of_bytes_col[j]))
-                            for k in range(1, int(number_of_bytes_col[j]) + 1):
-                                print(f"{variable_name}-{k}")
-                                SID[f"{variable_name}-{k}"] = "uint8_t"
-                        # elif pd.isna(variable_format_col[j]) and pd.isna(number_of_bytes_col[j]):
-                        #     SID[variable_name] = "uint8_t"
-                        else:
-                            SID[variable_name] = variable_format_col[j]
+                        # if pd.isna(variable_format_col[j]) and not pd.isna(number_of_bytes_col[j]):
+                        #     # print((number_of_bytes_col[j]))
+                        #     for k in range(1, int(number_of_bytes_col[j]) + 1):
+                        #         print(f"{variable_name}-{k}")
+                        #         SID[f"{variable_name}-{k}"] = "uint8_t"
+                        # # elif pd.isna(variable_format_col[j]) and pd.isna(number_of_bytes_col[j]):
+                        # #     SID[variable_name] = "uint8_t"
+                        # else:
 
                 structure.append(SID)
 

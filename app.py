@@ -53,49 +53,68 @@ async def upload_excel(file: UploadFile = File(...)):
 
             for sheet_name in sheets_names_list:
                 df = sheets[sheet_name]
+                df.fillna("", inplace=True)
 
                 # Ensure required columns exist
-                required_cols = ["نام فیلد", "فرمت", "نام متغیر", "تعداد بایت"]
+                required_cols = ["Field Name", "Type", "Variable Name", "Count", "Gain", "Offset", "Min", "Max", "Concept", "Unit"]
                 if not all(col in df.columns for col in required_cols):
                     raise ValueError(f"Missing required columns in sheet: {sheet_name}")
 
-                field_name_col = df["نام فیلد"]
-                variable_format_col = df["فرمت"]
-                variable_name_col = df["نام متغیر"]
-                number_of_bytes_col = df["تعداد بایت"]
+                field_name_col = df[required_cols[0]]
+                type_col = df[required_cols[1]]
+                variable_name_col = df[required_cols[2]]
+                count_col = df[required_cols[3]]
+                gain_col = df[required_cols[4]]
+                offset_col = df[required_cols[5]]
+                min_col = df[required_cols[6]]
+                max_col = df[required_cols[7]]
+                concept_col = df[required_cols[8]]
+                unit_col = df[required_cols[9]]
+
+                _field_name = required_cols[0]
+                _type = required_cols[1]
+                _variable_name = required_cols[2]
+                _count = required_cols[3]
+                _gain = required_cols[4]
+                _offset = required_cols[5]
+                _min = required_cols[6]
+                _max = required_cols[7]
+                _concept = required_cols[8]
+                _unit = required_cols[9]
 
                 SID = {}
                 is_first_SID = True
                 SID_Number = "SID1"
+                SID_Full_Name = "SID1"
+                last_valid_field_name = ""
 
                 for j in range(len(field_name_col)):
-                    print(j)
                     if isinstance(field_name_col[j], str) and "SID" in field_name_col[j]:
-                        SID_Number = field_name_col[j].split(":")[0]
+                        SID_Full_Name = field_name_col[j]
                         if not is_first_SID:
-                            print(SID)
-                            print("--------")
                             structure.append(SID)
                             SID = {}
                         is_first_SID = False
 
-                    if variable_name_col[j] != "نام متغیر" and not pd.isna(variable_name_col[j]):
-                        metadata = {}
-                        metadata["sub_system"] = sheet_name
-                        metadata["SID"] = SID_Number
+                    if variable_name_col[j] != _variable_name and variable_name_col[j] != "":
+                        metadata = {"info": sheet_name, "full_name": SID_Full_Name, "SID": SID_Full_Name}
+                        if field_name_col[j] != "":
+                            last_valid_field_name = field_name_col[j]
 
                         SID["metadata"] = metadata
-                        variable_name = variable_name_col[j]
-                        SID[variable_name] = variable_format_col[j]
-                        # SID[variable_name] = "uint16_t" if pd.isna(variable_format_col[j]) else variable_format_col[j]
-                        # if pd.isna(variable_format_col[j]) and not pd.isna(number_of_bytes_col[j]):
-                        #     # print((number_of_bytes_col[j]))
-                        #     for k in range(1, int(number_of_bytes_col[j]) + 1):
-                        #         print(f"{variable_name}-{k}")
-                        #         SID[f"{variable_name}-{k}"] = "uint8_t"
-                        # # elif pd.isna(variable_format_col[j]) and pd.isna(number_of_bytes_col[j]):
-                        # #     SID[variable_name] = "uint8_t"
-                        # else:
+                        sid_info_obj = {"field_name": field_name_col[j] if field_name_col[j] != "" else last_valid_field_name,
+                                        "type": type_col[j] if type_col[j] != "" else "",
+                                        "variable_name": variable_name_col[j] if variable_name_col[
+                                                                                     j] != "" else "",
+                                        "count": count_col[j] if count_col[j] != "" else "",
+                                        "gain": gain_col[j] if gain_col[j] != "" else 1,
+                                        "offset": offset_col[j] if offset_col[j] != "" else 0,
+                                        "min": min_col[j] if min_col[j] != "" else "",
+                                        "max": max_col[j] if max_col[j] != "" else "",
+                                        "concept": concept_col[j] if concept_col[j] != "" else "",
+                                        "unit": unit_col[j] if unit_col[j] != "" else ""}
+
+                        SID[variable_name_col[j]] = sid_info_obj
 
                 structure.append(SID)
 
@@ -134,7 +153,6 @@ async def get_current_structure():
     dataCollection = db[metadata[0]["collection_name"]]
     data = list(dataCollection.find({}))
     jsonable_data = bson_to_jsonable(data)
-    print(jsonable_data)
     return JSONResponse(content=jsonable_data)
 
 @app.get("/getAllStructureMetadata")

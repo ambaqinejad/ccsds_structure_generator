@@ -1,4 +1,4 @@
+*.tar
 *.json
 *.xlsx
-*.tar
-.env
+.venv

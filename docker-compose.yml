@@ -4,7 +4,7 @@ services:
   api:
     # Restart on crash + start on system reboot
     restart: always
-    image: ccsds_structure_manager_api
+    image: ccsds_structure_manager
     build: .
     container_name: ccsds_structure_manager
     ports:

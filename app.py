@@ -9,12 +9,14 @@ import datetime
 from bson import ObjectId
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import httpx
 
 
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = os.getenv("DB_NAME", default="CCSDS_DB")
 HISTORY_COLLECTION_NAME = os.getenv("HISTORY_COLLECTION_NAME", default="CCSDS_History")
+PARSER_SERVER_URL = os.getenv("PARSER_SERVER_URL", default="http://192.168.234.128:5000")
 if not MONGO_URI:
     raise ValueError("MONGO_URI is not set in the .env file")
 
@@ -33,6 +35,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+async def send_structure_update_notification_to_external_server():
+    async with httpx.AsyncClient() as http_client:
+        response = await http_client.get(
+            f"{PARSER_SERVER_URL}/updatePacketStructure",
+            timeout=10.0
+        )
+        response.raise_for_status()
+        return response.json()
 
 @app.post("/uploadExcel")
 async def upload_excel(file: UploadFile = File(...)):
@@ -84,7 +95,6 @@ async def upload_excel(file: UploadFile = File(...)):
 
                 SID = {}
                 is_first_SID = True
-                SID_Number = "SID1"
                 SID_Full_Name = "SID1"
                 last_valid_field_name = ""
 
@@ -97,7 +107,9 @@ async def upload_excel(file: UploadFile = File(...)):
                         is_first_SID = False
 
                     if variable_name_col[j] != _variable_name and variable_name_col[j] != "":
-                        metadata = {"info": sheet_name, "full_name": SID_Full_Name, "SID": SID_Full_Name}
+                        SID_NUMBER = SID_Full_Name.split(":")[0].replace("SID", "")
+                        SID_NUMBER = int(SID_NUMBER)
+                        metadata = {"info": sheet_name, "full_name": SID_Full_Name, "SID": SID_Full_Name, "SIDNumber": SID_NUMBER}
                         if field_name_col[j] != "":
                             last_valid_field_name = field_name_col[j]
 
@@ -137,6 +149,11 @@ async def upload_excel(file: UploadFile = File(...)):
             })
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"MongoDB Error in Modifying History Collection: {str(e)}")
+
+        try:
+            await send_structure_update_notification_to_external_server()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error in notifying structure change in parser server : {str(e)}")
 
         return JSONResponse(content={
             "message": "File processed successfully"
@@ -190,13 +207,19 @@ class StructureIdModel(BaseModel):
     structureId: str
 @app.post("/changeCurrentStructure")
 async def get_structure_by_name(body: StructureIdModel):
-    """Change structure with specific id to current structure."""
-    structure_id = body.structureId
-    history_collection.update_many({}, {"$set": {"is_current": False}})
-    history_collection.update_many({"_id": ObjectId(structure_id)}, {"$set": {"is_current": True}})
-    return JSONResponse(content={
-        "message": "Current structure changed successfully"
-    })
+    try:
+        """Change structure with specific id to current structure."""
+        structure_id = body.structureId
+        history_collection.update_many({}, {"$set": {"is_current": False}})
+        history_collection.update_many({"_id": ObjectId(structure_id)}, {"$set": {"is_current": True}})
+        await send_structure_update_notification_to_external_server()
+        return JSONResponse(content={
+            "message": "Current structure changed successfully"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 
 def bson_to_jsonable(obj):
     """Recursively convert MongoDB BSON types into JSON-serializable types."""

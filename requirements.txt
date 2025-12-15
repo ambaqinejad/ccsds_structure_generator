@@ -5,3 +5,4 @@ openpyxl
 pymongo
 python-dotenv
 python-multipart
+httpx

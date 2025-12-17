@@ -38,6 +38,7 @@ app.add_middleware(
 
 async def send_structure_update_notification_to_external_server():
     async with httpx.AsyncClient() as http_client:
+        print(PARSER_SERVER_URL)
         response = await http_client.get(
             f"{PARSER_SERVER_URL}/updatePacketStructure",
             timeout=10.0

@@ -16,7 +16,7 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI", default="mongodb://192.168.0.100:27017")
 DB_NAME = os.getenv("DB_NAME", default="Parser")
 HISTORY_COLLECTION_NAME = os.getenv("HISTORY_COLLECTION_NAME", default="CCSDS_History")
-PARSER_SERVER_URL = os.getenv("PARSER_SERVER_URL", default="192.168.0.100:5000")
+PARSER_SERVER_URL = os.getenv("PARSER_SERVER_URL", default="192.168.0.102:5000")
 if not MONGO_URI:
     raise ValueError("MONGO_URI is not set in the .env file")
 

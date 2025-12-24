@@ -10,7 +10,6 @@ WORKDIR /app
 
 # Copy dependency list first (for Docker layer caching)
 COPY requirements.txt .
-COPY .env .
 
 # Install system dependencies and Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \

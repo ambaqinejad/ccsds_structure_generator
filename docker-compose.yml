@@ -9,5 +9,9 @@ services:
     container_name: ccsds_structure_manager
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - MONGO_URI=mongodb://192.168.0.100:27017
+      - DB_NAME=Parser
+      - COLLECTION_NAME=CCSDS_Structure
+      - HISTORY_COLLECTION_NAME=CCSDS_STRUCTURE_HISTORY
+      - PARSER_SERVER_URL=http://192.168.0.102:5000
